@@ -1,14 +1,22 @@
 import os
+import sys
 import threading
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
 from yt_dlp import YoutubeDL
 
 # Global flag to track cancellation
 cancel_flag = False
 
+# Get username for the Videos folder
 username = os.environ.get("USERNAME")
+
+# Use embedded ffmpeg if running as an executable
+if getattr(sys, "frozen", False):
+    ffmpeg_path = os.path.join(sys._MEIPASS, "ffmpeg", "ffmpeg.exe")
+else:
+    ffmpeg_path = os.path.join(os.getcwd(), "ffmpeg", "ffmpeg.exe")
 
 
 # Function to download video or audio
@@ -18,7 +26,7 @@ def download_video():
     url = url_entry.get()
     format_choice = format_var.get()  # Get the selected format
 
-    if not url.strip():
+    if not url.strip() or url == "Enter YouTube Video URL here...":
         status_label.config(text="Please enter a valid URL.", fg="red")
         return
 
@@ -46,6 +54,7 @@ def download_video():
             ydl_opts = {
                 "progress_hooks": [progress_hook],
                 "outtmpl": os.path.join(output_folder, "%(title)s.%(ext)s"),
+                "ffmpeg_location": ffmpeg_path,
             }
 
             if format_choice == "MP3":
@@ -67,6 +76,10 @@ def download_video():
             if not cancel_flag:
                 status_label.config(
                     text=f"Download completed: {video_title}", fg="green"
+                )
+                messagebox.showinfo(
+                    "Download Complete",
+                    f"Download of '{video_title}' completed successfully!\nSay thanks to Shajin who made this useless app :)",
                 )
         except Exception as e:
             if cancel_flag:
@@ -103,6 +116,20 @@ def progress_hook(d):
         status_label.config(text=f"Downloading... {int(progress_bar['value'])}%")
 
 
+# Function to add placeholder text
+def add_placeholder(event):
+    if url_entry.get() == "":
+        url_entry.insert(0, "Enter YouTube Video URL here...")
+        url_entry.config(fg="grey")
+
+
+# Function to remove placeholder text
+def remove_placeholder(event):
+    if url_entry.get() == "Enter YouTube Video URL here...":
+        url_entry.delete(0, tk.END)
+        url_entry.config(fg="black")
+
+
 # Create the main window
 root = tk.Tk()
 root.title("Useless Video Downloader by Shajin")
@@ -112,8 +139,11 @@ root.geometry("1080x480")
 label = tk.Label(root, text="Enter YouTube Video URL:", font=("Arial", 18))
 label.pack(pady=10)
 
-# Add an entry box for the URL
-url_entry = tk.Entry(root, width=60, font=("Arial", 20))
+# Add an entry box for the URL with placeholder
+url_entry = tk.Entry(root, width=60, font=("Arial", 20), fg="grey")
+url_entry.insert(0, "Enter YouTube Video URL here...")
+url_entry.bind("<FocusIn>", remove_placeholder)
+url_entry.bind("<FocusOut>", add_placeholder)
 url_entry.pack(pady=5)
 
 # Add a dropdown menu for format selection
@@ -162,5 +192,4 @@ cancel_button = tk.Button(
 cancel_button.grid(row=0, column=1, padx=10)
 
 # Run the application
-# root.iconbitmap("icon.ico")
 root.mainloop()
